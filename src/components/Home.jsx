@@ -1,8 +1,8 @@
-﻿import { useAppStore } from '../store/useAppStore'
+﻿import Sidebar from './layout/Sidebar'
+import Hero from './layout/Hero'
+import Footer from './layout/Footer'
 
 function Home() {
-  const goToCategory = useAppStore((s) => s.goToCategory)
-
   const categorias = [
     { id: 1, nombre: 'Anillos' },
     { id: 2, nombre: 'Collares' },
@@ -11,14 +11,14 @@ function Home() {
 
   return (
     <div>
-      <h1>ALMĀS</h1>
-      <div>
-        {categorias.map((cat) => (
-          <button key={cat.id} onClick={() => goToCategory(cat.id)}>
-            {cat.nombre}
-          </button>
-        ))}
+      <Hero />
+      <div style={{ display: 'flex' }}>
+        <Sidebar categorias={categorias} />
+        <main style={{ flex: 1, padding: '1rem' }}>
+          <p>Productos destacados aquí...</p>
+        </main>
       </div>
+      <Footer />
     </div>
   )
 }
