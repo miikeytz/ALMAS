@@ -1,7 +1,19 @@
 ﻿// src/components/CategoryDetail.jsx
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
+import { graphqlRequest } from '../graphql/client'
 import Skeleton from './Skeleton'
+
+const QUERY_PRODUCTS = `
+  query GetProducts($categoriaId: Int) {
+    products(categoriaId: $categoriaId) {
+      id
+      nombre
+      precio
+      imagenUrl
+    }
+  }
+`
 
 function CategoryDetail() {
   const categoryId = useAppStore((s) => s.selectedCategoryId)
@@ -13,17 +25,11 @@ function CategoryDetail() {
 
   useEffect(() => {
     setLoading(true)
-    // Simulación de fetch — luego esto será una query GraphQL real
-    const timer = setTimeout(() => {
-      setProductos([
-        { id: 101, nombre: 'Anillo de Oro' },
-        { id: 102, nombre: 'Anillo de Plata' },
-      ])
-      setLoading(false)
-    }, 800)
-
-    return () => clearTimeout(timer)
-  }, [categoryId]) // se re-ejecuta si cambias de categoría
+    graphqlRequest(QUERY_PRODUCTS, { categoriaId: categoryId })
+      .then((data) => setProductos(data.products))
+      .catch((err) => console.error('Error cargando productos:', err))
+      .finally(() => setLoading(false))
+  }, [categoryId])
 
   return (
     <div>
@@ -38,7 +44,8 @@ function CategoryDetail() {
       ) : (
         productos.map((p) => (
           <div key={p.id}>
-            <p>{p.nombre}</p>
+            <img src={p.imagenUrl} alt={p.nombre} width={80} />
+            <p>{p.nombre} — ${p.precio}</p>
             <button onClick={() => goToProduct(p.id)}>Ver producto</button>
           </div>
         ))
