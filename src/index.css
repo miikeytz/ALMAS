@@ -13,3 +13,9 @@ body {
   margin: 0;
   font-family: system-ui, sans-serif;
 }
+
+@keyframes pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}

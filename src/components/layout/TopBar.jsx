@@ -1,11 +1,14 @@
-import {useAppStore } from '../../store/useAppStore';
+// src/components/layout/TopBar.jsx
+import { useAppStore } from '../../store/useAppStore'
+import { useSearch } from '../../context/SearchContext'
 
 function TopBar() {
-    const goHome = useAppStore((s) => s.goHome);
-    const goToCart = useAppStore((s) => s.goToCart);
-    const cartCount = useAppStore((s) => s.cart.length);
+  const goHome = useAppStore((s) => s.goHome)
+  const goToCart = useAppStore((s) => s.goToCart)
+  const cartCount = useAppStore((s) => s.cart.length)
+  const { query, setQuery } = useSearch()
 
-    return (
+  return (
     <header
       style={{
         display: 'flex',
@@ -22,6 +25,13 @@ function TopBar() {
       >
         ALMĀS
       </h1>
+
+      <input
+        type="text"
+        placeholder="Buscar joyas..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
 
       <button onClick={goToCart} style={{ position: 'relative' }}>
         🛒 Carrito {cartCount > 0 && `(${cartCount})`}
