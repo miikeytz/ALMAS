@@ -1,6 +1,11 @@
 # back/main.py
+from fastapi import FastAPI
+from strawberry.fastapi import GraphQLRouter
+from schema import schema
 from database import crear_tablas
 
-if __name__ == "__main__":
-    crear_tablas()
-    print("Tablas creadas. Ahora corre: python seed.py")
+crear_tablas()
+
+app = FastAPI()
+graphql_app = GraphQLRouter(schema)
+app.include_router(graphql_app, prefix="/graphql")
