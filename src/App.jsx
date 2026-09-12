@@ -1,4 +1,5 @@
 ﻿import { useAppStore } from './store/useAppStore'
+import TopBar from './components/layout/TopBar'
 import Home from './components/Home'
 import CategoryDetail from './components/CategoryDetail'
 import ProductDetail from './components/ProductDetail'
@@ -10,6 +11,7 @@ function App() {
 
   return (
     <>
+      <TopBar />
       {screen === 'home' && <Home />}
       {screen === 'category' && <CategoryDetail />}
       {screen === 'product' && <ProductDetail />}
