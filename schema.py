@@ -1,4 +1,4 @@
-# back/schema.py
+
 import strawberry
 from typing import List, Optional
 from sqlmodel import Session, select
@@ -61,4 +61,120 @@ class Query:
             return producto_a_type(p, session)
 
 
-schema = strawberry.Schema(query=Query)
+# agregar en back/schema.py, después de la clase Query
+
+from models import Pedido as PedidoDB, DetallePedido as DetallePedidoDB
+from datetime import datetime
+
+
+@strawberry.input
+class ProductoInput:
+    nombre: str
+    descripcion: str
+    precio: float
+    imagen_url: str
+    stock: int
+    categoria_id: int
+
+
+@strawberry.input
+class DetallePedidoInput:
+    producto_id: int
+    variante_id: Optional[int] = None
+    cantidad: int
+    precio_unitario: float
+
+
+@strawberry.input
+class PedidoInput:
+    nombre_comprador: str
+    email_comprador: str
+    direccion_envio: str
+    detalles: List[DetallePedidoInput]
+
+
+@strawberry.type
+class PedidoType:
+    id: int
+    nombre_comprador: str
+    estatus: str
+    total: float
+
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    def crear_producto(self, data: ProductoInput) -> ProductoType:
+        with Session(engine) as session:
+            nuevo = ProductoDB(**data.__dict__)
+            session.add(nuevo)
+            session.commit()
+            session.refresh(nuevo)
+            return producto_a_type(nuevo, session)
+
+    @strawberry.mutation
+    def actualizar_stock(self, id: int, nuevo_stock: int) -> Optional[ProductoType]:
+        with Session(engine) as session:
+            p = session.get(ProductoDB, id)
+            if p is None:
+                return None
+            p.stock = nuevo_stock
+            session.add(p)
+            session.commit()
+            session.refresh(p)
+            return producto_a_type(p, session)
+
+    @strawberry.mutation
+    def eliminar_producto(self, id: int) -> bool:
+        with Session(engine) as session:
+            p = session.get(ProductoDB, id)
+            if p is None:
+                return False
+            session.delete(p)
+            session.commit()
+            return True
+
+    @strawberry.mutation
+    def crear_pedido(self, data: PedidoInput) -> PedidoType:
+        with Session(engine) as session:
+            total = sum(d.cantidad * d.precio_unitario for d in data.detalles)
+
+            pedido = PedidoDB(
+                nombre_comprador=data.nombre_comprador,
+                email_comprador=data.email_comprador,
+                direccion_envio=data.direccion_envio,
+                estatus="pendiente",
+                total=total,
+            )
+            session.add(pedido)
+            session.commit()
+            session.refresh(pedido)
+
+            for d in data.detalles:
+                detalle = DetallePedidoDB(
+                    pedido_id=pedido.id,
+                    producto_id=d.producto_id,
+                    variante_id=d.variante_id,
+                    cantidad=d.cantidad,
+                    precio_unitario=d.precio_unitario,
+                )
+                session.add(detalle)
+
+                # descuenta stock
+                producto = session.get(ProductoDB, d.producto_id)
+                if producto:
+                    producto.stock = max(0, producto.stock - d.cantidad)
+                    session.add(producto)
+
+            session.commit()
+
+            return PedidoType(
+                id=pedido.id,
+                nombre_comprador=pedido.nombre_comprador,
+                estatus=pedido.estatus,
+                total=pedido.total,
+            )
+
+
+schema = strawberry.Schema(query=Query, mutation=Mutation)
+
