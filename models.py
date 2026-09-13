@@ -40,8 +40,17 @@ class Pedido(SQLModel, table=True):
     estatus: str = "pendiente"
     total: float
     fecha: datetime = Field(default_factory=datetime.utcnow)
+    usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")  # ← agrega esta línea
 
+    usuario: Optional["Usuario"] = Relationship(back_populates="pedidos")  # ← agrega esta línea
     detalles: List["DetallePedido"] = Relationship(back_populates="pedido")
+
+class Usuario(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nombre: str
+    email: str
+
+    pedidos: List["Pedido"] = Relationship(back_populates="usuario")
 
 
 class DetallePedido(SQLModel, table=True):

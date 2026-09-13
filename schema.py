@@ -1,9 +1,15 @@
-
 import strawberry
 from typing import List, Optional
+from datetime import datetime
 from sqlmodel import Session, select
 from database import engine
-from models import Producto as ProductoDB, Categoria as CategoriaDB, Variante as VarianteDB
+from models import (
+    Producto as ProductoDB,
+    Categoria as CategoriaDB,
+    Variante as VarianteDB,
+    Pedido as PedidoDB,
+    DetallePedido as DetallePedidoDB,
+)
 
 
 @strawberry.type
@@ -11,12 +17,6 @@ class VarianteType:
     id: int
     tipo: str
     valor: str
-
-@strawberry.type
-class CategoriaType:
-    id: int
-    nombre: str
-    imagenUrl: Optional[str] = None
 
 
 @strawberry.type
@@ -48,13 +48,38 @@ def producto_a_type(p: ProductoDB, session: Session) -> ProductoType:
 
 
 @strawberry.type
+class CategoriaType:
+    id: int
+    nombre: str
+    imagenUrl: Optional[str] = None
+
+    @strawberry.field
+    def productos(self) -> List["ProductoType"]:
+        with Session(engine) as session:
+            prods = session.exec(
+                select(ProductoDB).where(ProductoDB.categoria_id == self.id)
+            ).all()
+            return [producto_a_type(p, session) for p in prods]
+
+
+@strawberry.type
+class PedidoHistorialType:
+    id: int
+    nombre_comprador: str
+    estatus: str
+    total: float
+    fecha: datetime
+
+
+@strawberry.type
 class Query:
     @strawberry.field
-    def products(self, categoria_id: Optional[int] = None) -> List[ProductoType]:
+    def products(self, categoria_id: Optional[int] = None, limit: int = 20, offset: int = 0) -> List[ProductoType]:
         with Session(engine) as session:
             query = select(ProductoDB)
             if categoria_id is not None:
                 query = query.where(ProductoDB.categoria_id == categoria_id)
+            query = query.offset(offset).limit(limit)
             productos = session.exec(query).all()
             return [producto_a_type(p, session) for p in productos]
 
@@ -72,11 +97,22 @@ class Query:
             cats = session.exec(select(CategoriaDB)).all()
             return [CategoriaType(id=c.id, nombre=c.nombre, imagenUrl=c.imagen_url) for c in cats]
 
+    @strawberry.field
+    def categoria(self, id: int) -> Optional[CategoriaType]:
+        with Session(engine) as session:
+            c = session.get(CategoriaDB, id)
+            if c is None:
+                return None
+            return CategoriaType(id=c.id, nombre=c.nombre, imagenUrl=c.imagen_url)
 
-# agregar en back/schema.py, después de la clase Query
-
-from models import Pedido as PedidoDB, DetallePedido as DetallePedidoDB
-from datetime import datetime
+    @strawberry.field
+    def pedidos(self) -> List[PedidoHistorialType]:
+        with Session(engine) as session:
+            peds = session.exec(select(PedidoDB)).all()
+            return [
+                PedidoHistorialType(id=p.id, nombre_comprador=p.nombre_comprador, estatus=p.estatus, total=p.total, fecha=p.fecha)
+                for p in peds
+            ]
 
 
 @strawberry.input
@@ -172,7 +208,6 @@ class Mutation:
                 )
                 session.add(detalle)
 
-                # descuenta stock
                 producto = session.get(ProductoDB, d.producto_id)
                 if producto:
                     producto.stock = max(0, producto.stock - d.cantidad)
@@ -189,4 +224,3 @@ class Mutation:
 
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
-
