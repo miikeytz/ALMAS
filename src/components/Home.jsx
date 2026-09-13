@@ -1,30 +1,37 @@
-﻿import Sidebar from './layout/Sidebar'
-import Hero from './layout/Hero'
-import Footer from './layout/Footer'
+﻿// src/components/Home.jsx
+import { useState, useEffect } from 'react'
+import ProductCard from './ProductCard'
+import { graphqlRequest } from '../graphql/client'
 import { useSearch } from '../context/SearchContext'
 
-function Home() {
-  const { query } = useSearch()
-  const categorias = [
-    { id: 1, nombre: 'Anillos' },
-    { id: 2, nombre: 'Collares' },
-    { id: 3, nombre: 'Aretes' },
-  ]
+const QUERY_PRODUCTS = `query { products { id nombre precio imagenUrl } }`
 
-   const categoriasFiltradas = categorias.filter((c) =>
-    c.nombre.toLowerCase().includes(query.toLowerCase())
+function Home() {
+  const [productos, setProductos] = useState([])
+  const { query } = useSearch()
+
+  useEffect(() => {
+    graphqlRequest(QUERY_PRODUCTS).then((data) => setProductos(data.products))
+  }, [])
+
+  const productosFiltrados = productos.filter((p) =>
+    p.nombre.toLowerCase().includes(query.toLowerCase())
   )
 
   return (
-    <div>
-      <Hero />
-      <div style={{ display: 'flex' }}>
-        <Sidebar categorias={categoriasFiltradas} />
-        <main style={{ flex: 1, padding: '1rem' }}>
-          <p>Productos destacados aquí...</p>
-        </main>
+    <div style={{ padding: '2rem' }}>
+      <h2>Destacados</h2>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '1rem',
+        }}
+      >
+        {productosFiltrados.map((p) => (
+          <ProductCard key={p.id} producto={p} />
+        ))}
       </div>
-      <Footer />
     </div>
   )
 }

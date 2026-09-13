@@ -1,8 +1,8 @@
-﻿// src/components/CategoryDetail.jsx
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { graphqlRequest } from '../graphql/client'
 import Skeleton from './Skeleton'
+import ProductCard from './ProductCard'
 
 const QUERY_PRODUCTS = `
   query GetProducts($categoriaId: Int) {
@@ -17,7 +17,6 @@ const QUERY_PRODUCTS = `
 
 function CategoryDetail() {
   const categoryId = useAppStore((s) => s.selectedCategoryId)
-  const goToProduct = useAppStore((s) => s.goToProduct)
   const goHome = useAppStore((s) => s.goHome)
 
   const [loading, setLoading] = useState(true)
@@ -32,23 +31,28 @@ function CategoryDetail() {
   }, [categoryId])
 
   return (
-    <div>
-      <button onClick={goHome}>← Volver</button>
-      <h2>Categoría {categoryId}</h2>
+    <div style={{ padding: '1.5rem' }}>
+      
+      <h2 style={{ fontFamily: 'var(--font-heading)' }}>Categoría</h2>
 
       {loading ? (
-        <>
-          <Skeleton height="60px" />
-          <Skeleton height="60px" />
-        </>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+          <Skeleton height="220px" />
+          <Skeleton height="220px" />
+          <Skeleton height="220px" />
+        </div>
       ) : (
-        productos.map((p) => (
-          <div key={p.id}>
-            <img src={p.imagenUrl} alt={p.nombre} width={80} />
-            <p>{p.nombre} — ${p.precio}</p>
-            <button onClick={() => goToProduct(p.id)}>Ver producto</button>
-          </div>
-        ))
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: '1rem',
+          }}
+        >
+          {productos.map((p) => (
+            <ProductCard key={p.id} producto={p} />
+          ))}
+        </div>
       )}
     </div>
   )

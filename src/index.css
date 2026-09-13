@@ -1,10 +1,11 @@
 :root {
-  --color-bg: #8f1268;        /* magenta/vino oscuro de fondo */
-  --color-text: #fdf0dc;      /* crema para texto principal */
+  --color-bg: #ffffff;        /* fondo general blanco */
+  --color-purple: #8f1268;    /* magenta/vino, solo para topbar, cards y detalles que deben resaltar */
+  --color-text: #3e084e;      /* texto oscuro para que se lea sobre blanco */
   --color-accent: #1f6e43;    /* verde para el logo cursivo */
   --color-gold: #c9a24b;      /* dorado para acentos decorativos */
-  --font-heading: 'Arial Black', sans-serif; /* cámbialo si usan otra fuente */
-  --font-script: 'Brush Script MT', cursive; /* para el "almās" cursivo */
+  --font-heading: 'Arial Black', sans-serif;
+  --font-script: 'Brush Script MT', cursive;
 }
 
 body {
@@ -12,6 +13,10 @@ body {
   color: var(--color-text);
   margin: 0;
   font-family: system-ui, sans-serif;
+}
+
+input::placeholder {
+  color: rgb(252, 251, 250);
 }
 
 @keyframes pulse {
