@@ -21,19 +21,22 @@ function CategoryDetail() {
 
   const [loading, setLoading] = useState(true)
   const [productos, setProductos] = useState([])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     graphqlRequest(QUERY_PRODUCTS, { categoriaId: categoryId })
       .then((data) => setProductos(data.products))
-      .catch((err) => console.error('Error cargando productos:', err))
+      .catch(() => setError('No se pudieron cargar los productos.'))
       .finally(() => setLoading(false))
   }, [categoryId])
 
   return (
     <div style={{ padding: '1.5rem' }}>
-      
       <h2 style={{ fontFamily: 'var(--font-heading)' }}>Categoría</h2>
+
+      {error && <p style={{ color: '#e05252' }}>{error}</p>}
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>

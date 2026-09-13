@@ -1,16 +1,56 @@
-# React + Vite
+# ALMĀS — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Tienda en línea de joyería artesanal. Construido con **React + Vite**, **Zustand** para
+la máquina de estados del flujo de compra, y **GraphQL** (fetch nativo) para consumir
+el backend.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 18+
+- El backend corriendo en `http://127.0.0.1:8000` (ver README de `back/`)
 
-## React Compiler
+## Instalación
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cd front
+npm install
+```
 
-## Expanding the ESLint configuration
+## Correr en desarrollo
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run dev
+```
+
+Abre la URL que muestra la terminal (normalmente `http://localhost:5173`).
+
+> **Importante:** el backend debe estar corriendo en paralelo (`uvicorn main:app --reload`
+> dentro de `back/`) para que el catálogo, el detalle de producto y el checkout carguen
+> datos reales.
+
+## Flujo de la aplicación
+
+Home → Detalle de categoría → Detalle de producto → Carrito → Checkout
+
+La navegación se controla con una **máquina de estados** (sin rutas/URLs), implementada
+en `src/store/useAppStore.js` con Zustand. `App.jsx` decide qué pantalla mostrar según
+el valor de `screen` en el store.
+
+## Estructura del proyecto
+
+```
+front/src/
+├── App.jsx                  # máquina de estados (switch de pantallas)
+├── main.jsx
+├── index.css                 # paleta de colores y estilos base
+├── store/useAppStore.js      # Zustand: navegación + carrito
+├── context/SearchContext.jsx # búsqueda global (Context API)
+├── graphql/client.js         # helper de fetch hacia el backend GraphQL
+└── components/
+    ├── Home.jsx, CategoryDetail.jsx, ProductDetail.jsx, Cart.jsx, Checkout.jsx
+    ├── ProductCard.jsx, Skeleton.jsx
+    └── layout/ (TopBar, Sidebar, Hero, Footer)
+```
+
+Ver `reporte-p2.md` (carpeta de reportes) para el diagrama de componentes y el diagrama
+de transición de estados completo.
