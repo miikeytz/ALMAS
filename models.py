@@ -1,4 +1,3 @@
-# back/models.py
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
@@ -7,9 +6,9 @@ from datetime import datetime
 class Categoria(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str
+    imagen_url: Optional[str] = None
 
     productos: List["Producto"] = Relationship(back_populates="categoria")
-
 
 class Producto(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

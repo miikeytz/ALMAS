@@ -12,6 +12,12 @@ class VarianteType:
     tipo: str
     valor: str
 
+@strawberry.type
+class CategoriaType:
+    id: int
+    nombre: str
+    imagenUrl: Optional[str] = None
+
 
 @strawberry.type
 class ProductoType:
@@ -59,6 +65,12 @@ class Query:
             if p is None:
                 return None
             return producto_a_type(p, session)
+
+    @strawberry.field
+    def categorias(self) -> List[CategoriaType]:
+        with Session(engine) as session:
+            cats = session.exec(select(CategoriaDB)).all()
+            return [CategoriaType(id=c.id, nombre=c.nombre, imagenUrl=c.imagen_url) for c in cats]
 
 
 # agregar en back/schema.py, después de la clase Query
