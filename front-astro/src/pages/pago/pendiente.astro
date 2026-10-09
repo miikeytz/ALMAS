@@ -1,0 +1,13 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const status = Astro.url.searchParams.get('status') ?? 'pending';
+---
+
+<Layout title="Pago pendiente | ALMĀS">
+  <main style="max-width: 700px; margin: 4rem auto; padding: 2rem; text-align: center;">
+    <h1 style="color: var(--color-purple);">Pago pendiente</h1>
+    <p>Tu pedido está en proceso de confirmación. Puedes volver más tarde para revisar su estado.</p>
+    <p><strong>Status:</strong> {status}</p>
+    <a href="/" style="display: inline-block; margin-top: 1rem;">Volver al inicio</a>
+  </main>
+</Layout>

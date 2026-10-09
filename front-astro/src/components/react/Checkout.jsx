@@ -72,13 +72,40 @@ export default function Checkout() {
         },
       });
 
-      setPedido(data.crearPedido);
+      const pedidoCreado = data.crearPedido;
+      setPedido(pedidoCreado);
+
+      const mpResponse = await fetch("/api/mercadopago/crear-preferencia", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pedidoId: pedidoCreado.id,
+          items: cart.map((item) => ({
+            producto_id: item.id,
+            nombre: item.nombre,
+            cantidad: item.cantidad,
+            precio: item.precio,
+          })),
+          emailUsuario: email,
+        }),
+      });
+
+      const mpData = await mpResponse.json();
+
+      if (!mpResponse.ok || !mpData.init_point) {
+        throw new Error(mpData.error || "No se pudo iniciar el pago en Mercado Pago.");
+      }
 
       clearCart();
+      window.location.href = mpData.init_point;
     } catch (err) {
       console.error(err);
 
-      setError("No se pudo realizar el pedido.");
+      setError(
+        err?.message || "No se pudo realizar el pedido. Intenta nuevamente.",
+      );
     } finally {
       setLoading(false);
     }

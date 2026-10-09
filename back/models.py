@@ -40,9 +40,12 @@ class Pedido(SQLModel, table=True):
     estatus: str = "pendiente"
     total: float
     fecha: datetime = Field(default_factory=datetime.utcnow)
-    usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")  # ← agrega esta línea
+    metodo_pago: Optional[str] = "mercadopago"
+    id_pago_mp: Optional[str] = None
+    fecha_pago: Optional[datetime] = None
+    usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
-    usuario: Optional["Usuario"] = Relationship(back_populates="pedidos")  # ← agrega esta línea
+    usuario: Optional["Usuario"] = Relationship(back_populates="pedidos")
     detalles: List["DetallePedido"] = Relationship(back_populates="pedido")
 
 class DetallePedido(SQLModel, table=True):
@@ -61,7 +64,7 @@ class Usuario(SQLModel, table=True):
     nombre: str
     email: str = Field(index=True, unique=True)
     password_hash: str
-
+    rol: str = "cliente"
     activo: bool = True
 
     pedidos: List["Pedido"] = Relationship(back_populates="usuario")

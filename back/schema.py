@@ -134,7 +134,8 @@ class Query:
         return UsuarioType(
         id=usuario.id,
         nombre=usuario.nombre,
-        email=usuario.email
+        email=usuario.email,
+        rol=usuario.rol,
         )
 
 @strawberry.input
@@ -167,8 +168,13 @@ class PedidoInput:
 class PedidoType:
     id: int
     nombre_comprador: str
+    email_comprador: str
+    direccion_envio: str
     estatus: str
     total: float
+    metodo_pago: Optional[str] = None
+    id_pago_mp: Optional[str] = None
+    fecha: datetime
 
 @strawberry.input
 class RegistroInput:
@@ -186,6 +192,7 @@ class UsuarioType:
     id: int
     nombre: str
     email: str
+    rol: str
 
 @strawberry.type
 class AuthPayload:
@@ -248,7 +255,11 @@ def obtener_usuario_actual(
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def crear_producto(self, data: ProductoInput) -> ProductoType:
+    def crear_producto(self, info: Info, data: ProductoInput) -> ProductoType:
+        usuario = obtener_usuario_actual(info)
+        if usuario.rol != "admin":
+            raise ValueError("No tienes permiso para crear productos.")
+
         with Session(engine) as session:
             nuevo = ProductoDB(**data.__dict__)
             session.add(nuevo)
@@ -257,7 +268,11 @@ class Mutation:
             return producto_a_type(nuevo, session)
 
     @strawberry.mutation
-    def actualizar_stock(self, id: int, nuevo_stock: int) -> Optional[ProductoType]:
+    def actualizar_stock(self, info: Info, id: int, nuevo_stock: int) -> Optional[ProductoType]:
+        usuario = obtener_usuario_actual(info)
+        if usuario.rol != "admin":
+            raise ValueError("No tienes permiso para actualizar stock.")
+
         with Session(engine) as session:
             p = session.get(ProductoDB, id)
             if p is None:
@@ -269,7 +284,11 @@ class Mutation:
             return producto_a_type(p, session)
 
     @strawberry.mutation
-    def eliminar_producto(self, id: int) -> bool:
+    def eliminar_producto(self, info: Info, id: int) -> bool:
+        usuario = obtener_usuario_actual(info)
+        if usuario.rol != "admin":
+            raise ValueError("No tienes permiso para eliminar productos.")
+
         with Session(engine) as session:
             p = session.get(ProductoDB, id)
             if p is None:
@@ -282,43 +301,99 @@ class Mutation:
     def crear_pedido(self, info: Info, data: PedidoInput) -> PedidoType:
         usuario = obtener_usuario_actual(info)
         with Session(engine) as session:
-            total = sum(d.cantidad * d.precio_unitario for d in data.detalles)
+            if not data.detalles:
+                raise ValueError("El pedido no tiene productos.")
+
+            detalles_con_precio = []
+            total = 0.0
+
+            for detalle in data.detalles:
+                producto = session.get(ProductoDB, detalle.producto_id)
+                if producto is None:
+                    raise ValueError(f"Producto {detalle.producto_id} no encontrado.")
+                if detalle.cantidad <= 0:
+                    raise ValueError(f"La cantidad del producto {producto.nombre} debe ser mayor a cero.")
+                if producto.stock < detalle.cantidad:
+                    raise ValueError(f"Stock insuficiente para {producto.nombre}.")
+
+                precio_real = float(producto.precio)
+                total += detalle.cantidad * precio_real
+                detalles_con_precio.append({
+                    "producto": producto,
+                    "detalle": detalle,
+                    "precio_real": precio_real,
+                })
 
             pedido = PedidoDB(
                 nombre_comprador=data.nombre_comprador,
                 email_comprador=data.email_comprador,
                 direccion_envio=data.direccion_envio,
                 estatus="pendiente",
-                total=total,
+                total=float(total),
+                metodo_pago="mercadopago",
                 usuario_id=usuario.id,
             )
             session.add(pedido)
             session.commit()
             session.refresh(pedido)
 
-            for d in data.detalles:
+            for item in detalles_con_precio:
                 detalle = DetallePedidoDB(
                     pedido_id=pedido.id,
-                    producto_id=d.producto_id,
-                    variante_id=d.variante_id,
-                    cantidad=d.cantidad,
-                    precio_unitario=d.precio_unitario,
+                    producto_id=item["detalle"].producto_id,
+                    variante_id=item["detalle"].variante_id,
+                    cantidad=item["detalle"].cantidad,
+                    precio_unitario=item["precio_real"],
                 )
                 session.add(detalle)
-
-                producto = session.get(ProductoDB, d.producto_id)
-                if producto:
-                    producto.stock = max(0, producto.stock - d.cantidad)
-                    session.add(producto)
 
             session.commit()
 
             return PedidoType(
                 id=pedido.id,
                 nombre_comprador=pedido.nombre_comprador,
+                email_comprador=pedido.email_comprador,
+                direccion_envio=pedido.direccion_envio,
                 estatus=pedido.estatus,
                 total=pedido.total,
+                metodo_pago=pedido.metodo_pago,
+                id_pago_mp=pedido.id_pago_mp,
+                fecha=pedido.fecha,
             )
+
+    @strawberry.mutation
+    def actualizar_estado_pago_por_mp(
+        self,
+        id_pago_mp: str,
+        estatus: str,
+        external_reference: Optional[str] = None,
+    ) -> bool:
+        with Session(engine) as session:
+            pedido = session.exec(
+                select(PedidoDB).where(PedidoDB.id_pago_mp == id_pago_mp)
+            ).first()
+
+            if pedido is None and external_reference:
+                pedido = session.exec(
+                    select(PedidoDB).where(PedidoDB.id == int(external_reference))
+                ).first()
+
+            if pedido is None:
+                return False
+
+            estatus_normalizado = estatus.lower()
+            if estatus_normalizado not in {"pendiente", "pagado", "rechazado", "enviado"}:
+                estatus_normalizado = "pendiente"
+
+            pedido.estatus = estatus_normalizado
+            pedido.metodo_pago = "mercadopago"
+            pedido.id_pago_mp = id_pago_mp
+            if estatus_normalizado == "pagado":
+                pedido.fecha_pago = datetime.utcnow()
+
+            session.add(pedido)
+            session.commit()
+            return True
 
     @strawberry.mutation
     def registrar_usuario(
@@ -327,35 +402,36 @@ class Mutation:
         ) -> UsuarioType:
 
         with Session(engine) as session:
-
             usuario_existente = session.exec(
                 select(UsuarioDB).where(
                     UsuarioDB.email == data.email
                 )
             ).first()
 
-        if usuario_existente:
-            raise ValueError(
-                "Ya existe un usuario con ese correo."
+            if usuario_existente:
+                raise ValueError(
+                    "Ya existe un usuario con ese correo."
+                )
+
+            usuario = UsuarioDB(
+                nombre=data.nombre,
+                email=data.email,
+                password_hash=hash_password(
+                    data.password
+                ),
+                rol="cliente",
             )
 
-        usuario = UsuarioDB(
-            nombre=data.nombre,
-            email=data.email,
-            password_hash=hash_password(
-                data.password
+            session.add(usuario)
+            session.commit()
+            session.refresh(usuario)
+
+            return UsuarioType(
+                id=usuario.id,
+                nombre=usuario.nombre,
+                email=usuario.email,
+                rol=usuario.rol,
             )
-        )
-
-        session.add(usuario)
-        session.commit()
-        session.refresh(usuario)
-
-        return UsuarioType(
-            id=usuario.id,
-            nombre=usuario.nombre,
-            email=usuario.email
-        )
 
     @strawberry.mutation
     def login(
@@ -403,7 +479,8 @@ class Mutation:
             usuario=UsuarioType(
                 id=usuario.id,
                 nombre=usuario.nombre,
-                email=usuario.email
+                email=usuario.email,
+                rol=usuario.rol,
             )
         )
 
