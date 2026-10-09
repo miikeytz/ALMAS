@@ -1,0 +1,13 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const status = Astro.url.searchParams.get('status') ?? 'rejected';
+---
+
+<Layout title="Pago rechazado | ALMĀS">
+  <main style="max-width: 700px; margin: 4rem auto; padding: 2rem; text-align: center;">
+    <h1 style="color: var(--color-purple);">Pago rechazado</h1>
+    <p>Tu pedido no fue procesado. Puedes intentar nuevamente o elegir otra forma de pago.</p>
+    <p><strong>Status:</strong> {status}</p>
+    <a href="/checkout" style="display: inline-block; margin-top: 1rem;">Volver al checkout</a>
+  </main>
+</Layout>
